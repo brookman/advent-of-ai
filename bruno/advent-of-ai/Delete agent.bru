@@ -1,0 +1,17 @@
+meta {
+  name: Delete agent
+  type: http
+  seq: 5
+}
+
+delete {
+  url: http://localhost:8000/api/agent/018fdfdd-3b9d-793c-9828-add81c0b4e82
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "018fdfdd-3b9d-78a3-81fe-35bf67a02add"
+  }
+}

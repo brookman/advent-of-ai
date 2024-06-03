@@ -1,0 +1,18 @@
+meta {
+  name: Create agent
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8000/api/agent
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "test",
+    "usedModelsAndApis": []
+  }
+}

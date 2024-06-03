@@ -1,0 +1,18 @@
+meta {
+  name: Patch agent
+  type: http
+  seq: 6
+}
+
+patch {
+  url: http://localhost:8000/api/agent/018fdffd-2e3d-78fe-9d44-6e25257cd7ff
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "018fdffd-2e3d-7dc2-a50a-cb0602606ca4",
+    "name": "ultra bot 42"
+  }
+}

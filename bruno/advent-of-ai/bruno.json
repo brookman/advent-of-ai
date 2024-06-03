@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "advent-of-ai",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
