@@ -1,10 +1,11 @@
 mod agent;
 mod dtos;
+mod error;
 mod handler;
 mod model;
 mod route;
+mod task;
 mod traits;
-mod error;
 
 use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},

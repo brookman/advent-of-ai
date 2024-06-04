@@ -7,6 +7,7 @@ use crate::{
     agent::{create_agent, delete_agent, read_agent, update_agent},
     handler::health_checker_handler,
     model,
+    task::read_task,
 };
 
 pub fn create_router() -> Router {
@@ -18,6 +19,7 @@ pub fn create_router() -> Router {
         .route("/api/agent/:id", get(read_agent))
         .route("/api/agent/:id", patch(update_agent))
         .route("/api/agent/:id", delete(delete_agent))
+        .route("/api/task/:id", get(read_task))
 
     // .route(
     //     "/api/todos",
