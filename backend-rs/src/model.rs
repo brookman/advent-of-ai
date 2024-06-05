@@ -15,7 +15,7 @@ pub struct Todo {
     pub updatedAt: Option<DateTime<Utc>>,
 }
 
-pub type DB = Arc<Mutex<Database>>;
+// pub type DB = Arc<Mutex<Database>>;
 
 // pub fn todo_db() -> DB {
 //     Arc::new(Mutex::new(Database {
