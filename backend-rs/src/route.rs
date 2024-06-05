@@ -16,7 +16,7 @@ use crate::{
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 pub fn create_router(bearer_token: String) -> Router {
-    let db = model::todo_db();
+    // let db = model::todo_db();
 
     Router::new()
         .route("/api/health", get(health_checker_handler))

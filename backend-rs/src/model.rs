@@ -17,12 +17,12 @@ pub struct Todo {
 
 pub type DB = Arc<Mutex<Database>>;
 
-pub fn todo_db() -> DB {
-    Arc::new(Mutex::new(Database {
-        todos: vec![],
-        ranking: vec![],
-    }))
-}
+// pub fn todo_db() -> DB {
+//     Arc::new(Mutex::new(Database {
+//         todos: vec![],
+//         ranking: vec![],
+//     }))
+// }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize, Clone)]
