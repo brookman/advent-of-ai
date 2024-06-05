@@ -1,0 +1,17 @@
+meta {
+  name: Check task
+  type: http
+  seq: 11
+}
+
+post {
+  url: http://localhost:8000/api/task/018fe7ab-768f-7311-9a82-f01166ef30b2/check
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "solution" : "3"
+  }
+}

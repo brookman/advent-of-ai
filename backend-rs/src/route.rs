@@ -4,10 +4,7 @@ use axum::{
 };
 
 use crate::{
-    agent::{create_agent, delete_agent, read_agent, update_agent},
-    handler::health_checker_handler,
-    model,
-    task::{create_task, read_task, read_tasks},
+    agent::{create_agent, delete_agent, read_agent, update_agent}, check::check_task, handler::health_checker_handler, model, task::{create_task, read_task, read_tasks}
 };
 
 pub fn create_router() -> Router {
@@ -22,6 +19,7 @@ pub fn create_router() -> Router {
         .route("/api/task", post(create_task))
         .route("/api/task", get(read_tasks))
         .route("/api/task/:id", get(read_task))
+        .route("/api/task/:id/check", post(check_task))
 
     // .route(
     //     "/api/todos",
