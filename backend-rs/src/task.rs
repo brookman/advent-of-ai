@@ -77,6 +77,13 @@ pub enum TaskTypeReadDto {
     AdventOfCodePartTwo { description: String, input: String },
 }
 
+#[allow(non_snake_case)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TasksReadDto {
+    pub id: Uuid,
+    pub name: String,
+}
+
 impl DtoValidator for TaskCreateDto {
     fn validate(&self) -> Result<(), DtoValidationError> {
         if self.name.len() > 64 {
@@ -188,10 +195,9 @@ impl DtoValidator for TaskCreateDto {
 //     }
 // }
 
-pub async fn create_task(Json(dto): Json<TaskCreateDto>) -> Result<Json<TaskCreateDto>, AppError> {
+pub async fn create_task(Json(dto): Json<TaskCreateDto>) -> Result<Json<Uuid>, AppError> {
     dto.validate()?;
 
-    let token = Uuid::now_v7();
     let model = TaskModel {
         name: dto.name,
         task_type: match dto.taskType {
@@ -225,7 +231,7 @@ pub async fn create_task(Json(dto): Json<TaskCreateDto>) -> Result<Json<TaskCrea
 
     let (id, _) = TaskModel::create(model).await?;
 
-    Ok(Json(dto))
+    Ok(Json(id))
 }
 
 pub async fn read_task(Path(id): Path<Uuid>) -> Result<Json<TaskReadDto>, AppError> {
@@ -251,6 +257,22 @@ pub async fn read_task(Path(id): Path<Uuid>) -> Result<Json<TaskReadDto>, AppErr
             } => TaskTypeReadDto::AdventOfCodePartTwo { description, input },
         },
     }))
+}
+
+pub async fn read_tasks() -> Result<Json<Vec<TasksReadDto>>, AppError> {
+    let tasks = TaskModel::list().await?;
+
+    let mut dtos = tasks
+        .iter()
+        .map(|(id, model)| TasksReadDto {
+            id: *id,
+            name: model.name.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    dtos.sort_by(|a, b| a.id.cmp(&b.id));
+
+    Ok(Json(dtos))
 }
 
 // pub async fn delete_agent(

@@ -33,6 +33,38 @@ where
         Ok((id, model))
     }
 
+    async fn list() -> Result<Vec<(Uuid, T)>, CrudError> {
+        let model_dir: PathBuf = PathBuf::from("./data").join(Self::model_name());
+        let mut stream = fs::read_dir(model_dir).await.map_err(|_| CrudError::IO)?;
+
+        let mut ids = Vec::new();
+
+        while let Some(child) = stream.next_entry().await.map_err(|_| CrudError::IO)? {
+            if child.metadata().await.map_err(|_| CrudError::IO)?.is_file()
+                && child.file_name().to_string_lossy().ends_with(".json")
+            {
+                // get the stem of the file name without the extension
+                let id = Uuid::parse_str(
+                    &child
+                        .file_name()
+                        .to_string_lossy()
+                        .replace(".json", "")
+                        .to_string(),
+                )
+                .map_err(|_| CrudError::IO)?;
+
+                let json = fs::read_to_string(child.path())
+                    .await
+                    .map_err(|_| CrudError::IO)?;
+                let model: T =
+                    serde_json::from_str(&json).map_err(|_| CrudError::Serializiation)?;
+
+                ids.push((id, model));
+            }
+        }
+        Ok(ids)
+    }
+
     async fn update(id_model: (Uuid, T)) -> Result<(Uuid, T), CrudError> {
         let (id, model) = id_model;
         let path = Self::get_file_path(id).await?;
