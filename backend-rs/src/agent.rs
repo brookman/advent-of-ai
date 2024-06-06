@@ -1,23 +1,18 @@
-use axum::{extract::Path, Json};
+use axum::{extract::Path, Extension, Json};
 use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
     error::{AppError, DtoValidationError},
-    traits::{CrudModel, DtoValidator},
+    traits::DtoValidator,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AgentModel {
+#[derive(FromRow, Debug)]
+pub struct AgentInDb {
+    pub id: Uuid,
     pub token: Uuid,
     pub name: String,
-    pub used_models_and_apis: Vec<String>,
-}
-
-impl CrudModel<AgentModel> for AgentModel {
-    fn model_name() -> &'static str {
-        "agent"
-    }
 }
 
 #[allow(non_snake_case)]
@@ -25,30 +20,18 @@ impl CrudModel<AgentModel> for AgentModel {
 pub struct AgentDto {
     pub id: Uuid,
     pub name: String,
-    pub usedModelsAndApis: Vec<String>,
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentCreateDto {
     pub name: String,
-    pub usedModelsAndApis: Vec<String>,
 }
 
 impl DtoValidator for AgentCreateDto {
     fn validate(&self) -> Result<(), DtoValidationError> {
         if self.name.len() > 64 {
             return Err(DtoValidationError("name too long (must be <=64)".into()));
-        }
-        if self.usedModelsAndApis.len() > 64 {
-            return Err(DtoValidationError(
-                "sedModelsAndApis too long (must be <=64)".into(),
-            ));
-        }
-        if self.usedModelsAndApis.iter().any(|m| m.len() > 64) {
-            return Err(DtoValidationError(
-                "entrty in sedModelsAndApis too long (each must be <=64)".into(),
-            ));
         }
         Ok(())
     }
@@ -60,104 +43,124 @@ pub struct AgentCreatedDto {
     pub token: Uuid,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AgentDeleteDto {
-    pub token: Uuid,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AgentUpdateDto {
-    pub token: Uuid,
-    pub name: Option<String>,
-    pub usedModelsAndApis: Option<Vec<String>>,
-}
-
-impl DtoValidator for AgentUpdateDto {
-    fn validate(&self) -> Result<(), DtoValidationError> {
-        if let Some(name) = &self.name {
-            if name.len() > 64 {
-                return Err(DtoValidationError("name too long (must be <=64)".into()));
-            }
-        }
-        if let Some(used_models_and_apis) = &self.usedModelsAndApis {
-            if used_models_and_apis.len() > 64 {
-                return Err(DtoValidationError(
-                    "sedModelsAndApis too long (must be <=64)".into(),
-                ));
-            }
-            if used_models_and_apis.iter().any(|m| m.len() > 64) {
-                return Err(DtoValidationError(
-                    "entrty in sedModelsAndApis too long (each must be <=64)".into(),
-                ));
-            }
-        }
-        Ok(())
-    }
-}
-
 pub async fn create_agent(
+    Extension(pool): Extension<SqlitePool>,
     Json(dto): Json<AgentCreateDto>,
 ) -> Result<Json<AgentCreatedDto>, AppError> {
     dto.validate()?;
 
-    let token = Uuid::now_v7();
-    let model = AgentModel {
-        token: token.clone(),
-        name: dto.name,
-        used_models_and_apis: dto.usedModelsAndApis,
-    };
+    let model = AgentInDb::new(dto.name);
+    model.create(&pool).await?;
 
-    let (id, _) = AgentModel::create(model).await?;
-
-    Ok(Json(AgentCreatedDto { id, token: token }))
-}
-
-pub async fn read_agent(Path(id): Path<Uuid>) -> Result<Json<AgentDto>, AppError> {
-    let (id, model) = AgentModel::read(id).await?;
-
-    Ok(Json(AgentDto {
-        id,
-        name: model.name,
-        usedModelsAndApis: model.used_models_and_apis,
+    Ok(Json(AgentCreatedDto {
+        id: model.id,
+        token: model.token,
     }))
 }
 
-pub async fn delete_agent(
+pub async fn read_agent(
+    Extension(pool): Extension<SqlitePool>,
     Path(id): Path<Uuid>,
-    Json(dto): Json<AgentDeleteDto>,
-) -> Result<(), AppError> {
-    let (id, model) = AgentModel::read(id).await?;
-
-    if dto.token != model.token {
-        return Err(AppError::Unauthorized);
-    }
-
-    AgentModel::delete(id).await?;
-
-    Ok(())
-}
-
-pub async fn update_agent(
-    Path(id): Path<Uuid>,
-    Json(dto): Json<AgentUpdateDto>,
 ) -> Result<Json<AgentDto>, AppError> {
-    dto.validate()?;
-
-    let (id, mut model) = AgentModel::read(id).await?;
-
-    if dto.token != model.token {
-        return Err(AppError::Unauthorized);
-    }
-
-    model.name = dto.name.unwrap_or(model.name);
-    model.used_models_and_apis = dto.usedModelsAndApis.unwrap_or(model.used_models_and_apis);
-
-    let (id, model) = AgentModel::update((id, model)).await?;
+    let model = AgentInDb::read(&pool, id).await?;
 
     Ok(Json(AgentDto {
         id,
         name: model.name,
-        usedModelsAndApis: model.used_models_and_apis,
     }))
+}
+
+pub async fn read_all_agents(
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<Json<Vec<AgentDto>>, AppError> {
+    let model = AgentInDb::read_all(&pool).await?;
+    let result = model
+        .iter()
+        .map(|dto| AgentDto {
+            id: dto.id,
+            name: dto.name.clone(),
+        })
+        .collect();
+    Ok(Json(result))
+}
+
+impl AgentInDb {
+    fn new(name: String) -> Self {
+        let id = Uuid::now_v7();
+        let token = Uuid::now_v7();
+        Self { id, token, name }
+    }
+
+    async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(
+            r#"INSERT INTO agent (id, token, name) VALUES (?, ?, ?);"#,
+            self.id,
+            self.token,
+            self.name,
+        )
+        .execute(conn.as_mut())
+        .await?;
+
+        Ok(())
+    }
+
+    async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
+        let mut conn = pool.acquire().await?;
+        let model = sqlx::query_as!(
+            Self,
+            r#"SELECT id as "id: uuid::Uuid", token as "token: uuid::Uuid", name FROM agent WHERE id = ?;"#,
+            id,
+        )
+        .fetch_one(conn.as_mut())
+        .await ?;
+        Ok(model)
+    }
+
+    async fn read_by_token(pool: &SqlitePool, id: Uuid, token: Uuid) -> anyhow::Result<Self> {
+        let mut conn = pool.acquire().await?;
+        let model = sqlx::query_as!(
+            Self,
+            r#"SELECT id as "id: uuid::Uuid", token as "token: uuid::Uuid", name FROM agent WHERE id = ? AND token = ?;"#,
+            id,
+            token,
+        )
+        .fetch_one(conn.as_mut())
+        .await ?;
+        Ok(model)
+    }
+
+    async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+        let mut conn = pool.acquire().await?;
+        let models = sqlx::query_as!(
+            Self,
+            r#"SELECT id as "id: uuid::Uuid", token as "token: uuid::Uuid", name FROM agent;"#,
+        )
+        .fetch_all(conn.as_mut())
+        .await?;
+        Ok(models)
+    }
+
+    async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(
+            r#"UPDATE agent SET token = ?, name = ? WHERE id = ?;"#,
+            self.token,
+            self.name,
+            self.id,
+        )
+        .execute(conn.as_mut())
+        .await?;
+
+        Ok(())
+    }
+
+    async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(r#"DELETE FROM agent WHERE id = ?;"#, self.id,)
+            .execute(conn.as_mut())
+            .await?;
+
+        Ok(())
+    }
 }

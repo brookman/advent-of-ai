@@ -1,315 +1,149 @@
-use axum::{extract::Path, Json};
+use core::task;
+
+use axum::{extract::Path, Extension, Json};
 use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
     error::{AppError, DtoValidationError},
-    traits::{CrudModel, DtoValidator},
+    traits::DtoValidator,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TaskModel {
+#[derive(FromRow, Debug)]
+pub struct TaskInDb {
+    pub id: Uuid,
     pub name: String,
-    pub task_type: TaskType,
+    pub task_json: String,
+    pub solution: String,
 }
 
-impl CrudModel<TaskModel> for TaskModel {
-    fn model_name() -> &'static str {
-        "task"
-    }
-}
-
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
-pub enum TaskType {
-    SimpleTask {
-        description: String,
-        solution: String,
-    },
-    AdventOfCodePartOne {
-        description: String,
-        input: String,
-        solution: String,
-    },
-    AdventOfCodePartTwo {
-        description: String,
-        input: String,
-        solution: String,
-    },
+pub struct TaskDto {
+    pub name: String,
+    pub taskType: TaskTypeDto,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TasksDto {
+    pub id: Uuid,
+    pub name: String,
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskCreateDto {
     pub name: String,
-    pub taskType: TaskTypeCreateDto,
+    pub taskType: TaskTypeDto,
+    pub solution: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum TaskTypeCreateDto {
-    SimpleTask {
-        description: String,
-        solution: String,
-    },
-    AdventOfCodePartOne {
-        description: String,
-        input: String,
-        solution: String,
-    },
-    AdventOfCodePartTwo {
-        description: String,
-        input: String,
-        solution: String,
-    },
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TaskReadDto {
-    pub id: Uuid,
-    pub name: String,
-    pub taskType: TaskTypeReadDto,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum TaskTypeReadDto {
+pub enum TaskTypeDto {
     SimpleTask { description: String },
     AdventOfCodePartOne { description: String, input: String },
     AdventOfCodePartTwo { description: String, input: String },
 }
 
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TasksReadDto {
-    pub id: Uuid,
-    pub name: String,
+pub async fn create_task(
+    Extension(pool): Extension<SqlitePool>,
+    Json(dto): Json<TaskCreateDto>,
+) -> Result<Json<Uuid>, AppError> {
+    // dto.validate()?;
+
+    let task_json = serde_json::to_string(&dto.taskType).unwrap();
+    let model = TaskInDb::new(dto.name, task_json, dto.solution);
+    model.create(&pool).await?;
+
+    Ok(Json(model.id))
 }
 
-impl DtoValidator for TaskCreateDto {
-    fn validate(&self) -> Result<(), DtoValidationError> {
-        if self.name.len() > 64 {
-            return Err(DtoValidationError("name too long (must be <=64)".into()));
-        }
+pub async fn read_task(
+    Extension(pool): Extension<SqlitePool>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<TaskDto>, AppError> {
+    let model = TaskInDb::read(&pool, id).await?;
 
-        match &self.taskType {
-            TaskTypeCreateDto::SimpleTask {
-                description,
-                solution,
-            } => {
-                if description.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
-                    ));
-                }
-                if solution.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "solution too long (must be <=4096)".into(),
-                    ));
-                }
-            }
-            TaskTypeCreateDto::AdventOfCodePartOne {
-                description,
-                input,
-                solution,
-            } => {
-                if description.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
-                    ));
-                }
-                if input.len() > 32768 {
-                    return Err(DtoValidationError(
-                        "input too long (must be <=32768)".into(),
-                    ));
-                }
-                if solution.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "solution too long (must be <=4096)".into(),
-                    ));
-                }
-            }
-            TaskTypeCreateDto::AdventOfCodePartTwo {
-                description,
-                input,
-                solution,
-            } => {
-                if description.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
-                    ));
-                }
-                if input.len() > 32768 {
-                    return Err(DtoValidationError(
-                        "input too long (must be <=32768)".into(),
-                    ));
-                }
-                if solution.len() > 4096 {
-                    return Err(DtoValidationError(
-                        "solution too long (must be <=4096)".into(),
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}
+    let task_type = serde_json::from_str(&model.task_json).unwrap();
 
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct AgentCreatedDto {
-//     pub id: Uuid,
-//     pub token: Uuid,
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct AgentDeleteDto {
-//     pub token: Uuid,
-// }
-
-// #[allow(non_snake_case)]
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct AgentUpdateDto {
-//     pub token: Uuid,
-//     pub name: Option<String>,
-//     pub usedModelsAndApis: Option<Vec<String>>,
-// }
-
-// impl DtoValidator for AgentUpdateDto {
-//     fn validate(&self) -> Result<(), DtoValidationError> {
-//         if let Some(name) = &self.name {
-//             if name.len() > 64 {
-//                 return Err(DtoValidationError("name too long (must be <=64)".into()));
-//             }
-//         }
-//         if let Some(used_models_and_apis) = &self.usedModelsAndApis {
-//             if used_models_and_apis.len() > 64 {
-//                 return Err(DtoValidationError(
-//                     "sedModelsAndApis too long (must be <=64)".into(),
-//                 ));
-//             }
-//             if used_models_and_apis.iter().any(|m| m.len() > 64) {
-//                 return Err(DtoValidationError(
-//                     "entrty in sedModelsAndApis too long (each must be <=64)".into(),
-//                 ));
-//             }
-//         }
-//         Ok(())
-//     }
-// }
-
-pub async fn create_task(Json(dto): Json<TaskCreateDto>) -> Result<Json<Uuid>, AppError> {
-    dto.validate()?;
-
-    let model = TaskModel {
-        name: dto.name,
-        task_type: match dto.taskType {
-            TaskTypeCreateDto::SimpleTask {
-                description,
-                solution,
-            } => TaskType::SimpleTask {
-                description,
-                solution,
-            },
-            TaskTypeCreateDto::AdventOfCodePartOne {
-                description,
-                input,
-                solution,
-            } => TaskType::AdventOfCodePartOne {
-                description,
-                input,
-                solution,
-            },
-            TaskTypeCreateDto::AdventOfCodePartTwo {
-                description,
-                input,
-                solution,
-            } => TaskType::AdventOfCodePartTwo {
-                description,
-                input,
-                solution,
-            },
-        },
-    };
-
-    let (id, _) = TaskModel::create(model).await?;
-
-    Ok(Json(id))
-}
-
-pub async fn read_task(Path(id): Path<Uuid>) -> Result<Json<TaskReadDto>, AppError> {
-    let (id, model) = TaskModel::read(id).await?;
-
-    Ok(Json(TaskReadDto {
-        id,
+    Ok(Json(TaskDto {
         name: model.name,
-        taskType: match model.task_type {
-            TaskType::SimpleTask {
-                description,
-                solution: _,
-            } => TaskTypeReadDto::SimpleTask { description },
-            TaskType::AdventOfCodePartOne {
-                description,
-                input,
-                solution: _,
-            } => TaskTypeReadDto::AdventOfCodePartOne { description, input },
-            TaskType::AdventOfCodePartTwo {
-                description,
-                input,
-                solution: _,
-            } => TaskTypeReadDto::AdventOfCodePartTwo { description, input },
-        },
+        taskType: task_type,
     }))
 }
 
-pub async fn read_tasks() -> Result<Json<Vec<TasksReadDto>>, AppError> {
-    let tasks = TaskModel::list().await?;
+pub async fn read_all_tasks(
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<Json<Vec<TasksDto>>, AppError> {
+    let models = TaskInDb::read_all(&pool).await?;
 
-    let mut dtos = tasks
-        .iter()
-        .map(|(id, model)| TasksReadDto {
-            id: *id,
-            name: model.name.clone(),
+    let tasks = models
+        .into_iter()
+        .map(|model| TasksDto {
+            id: model.id,
+            name: model.name,
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    dtos.sort_by(|a, b| a.id.cmp(&b.id));
-
-    Ok(Json(dtos))
+    Ok(Json(tasks))
 }
 
-// pub async fn delete_agent(
-//     Path(id): Path<Uuid>,
-//     Json(dto): Json<AgentDeleteDto>,
-// ) -> Result<(), AppError> {
-//     let (id, model) = AgentModel::read(id).await?;
+impl TaskInDb {
+    fn new(name: String, task_json: String, solution: String) -> Self {
+        Self {
+            id: Uuid::now_v7(),
+            name,
+            task_json,
+            solution,
+        }
+    }
 
-//     if dto.token != model.token {
-//         return Err(AppError::Unauthorized);
-//     }
+    async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(
+            r#"INSERT INTO task (id, name, task_json, solution) VALUES (?, ?, ?, ?);"#,
+            self.id,
+            self.name,
+            self.task_json,
+            self.solution,
+        )
+        .execute(conn.as_mut())
+        .await?;
 
-//     AgentModel::delete(id).await?;
+        Ok(())
+    }
 
-//     Ok(())
-// }
+    async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
+        let mut conn = pool.acquire().await?;
+        let model = sqlx::query_as!(
+            Self,
+            r#"SELECT id as "id: uuid::Uuid", name, task_json, solution FROM task WHERE id = ?;"#,
+            id,
+        )
+        .fetch_one(conn.as_mut())
+        .await?;
+        Ok(model)
+    }
 
-// pub async fn update_agent(
-//     Path(id): Path<Uuid>,
-//     Json(dto): Json<AgentUpdateDto>,
-// ) -> Result<Json<AgentDto>, AppError> {
-//     dto.validate()?;
+    async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+        let mut conn = pool.acquire().await?;
+        let models = sqlx::query_as!(
+            Self,
+            r#"SELECT id as "id: uuid::Uuid", name, task_json, solution FROM task;"#,
+        )
+        .fetch_all(conn.as_mut())
+        .await?;
+        Ok(models)
+    }
 
-//     let (id, mut model) = AgentModel::read(id).await?;
+    async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(r#"DELETE FROM task WHERE id = ?;"#, self.id,)
+            .execute(conn.as_mut())
+            .await?;
 
-//     if dto.token != model.token {
-//         return Err(AppError::Unauthorized);
-//     }
-
-//     model.name = dto.name.unwrap_or(model.name);
-//     model.used_models_and_apis = dto.usedModelsAndApis.unwrap_or(model.used_models_and_apis);
-
-//     let (id, model) = AgentModel::update((id, model)).await?;
-
-//     Ok(Json(AgentDto {
-//         id,
-//         name: model.name,
-//         usedModelsAndApis: model.used_models_and_apis,
-//     }))
-// }
+        Ok(())
+    }
+}

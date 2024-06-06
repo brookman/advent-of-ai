@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS task (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    task_json TEXT NOT NULL,
+    solution TEXT NOT NULL
+)
