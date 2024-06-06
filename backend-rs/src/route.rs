@@ -9,13 +9,12 @@ use crate::{
     agent::{create_agent, delete_agent, read_agent, update_agent},
     check::check_task,
     handler::health_checker_handler,
-    model,
     task::{create_task, read_task, read_tasks},
 };
 
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
-pub fn create_router(bearer_token: String) -> Router {
+pub fn create_router(bearer_token: &str) -> Router {
     // let db = model::todo_db();
 
     Router::new()
@@ -28,7 +27,7 @@ pub fn create_router(bearer_token: String) -> Router {
         .route("/api/task", get(read_tasks))
         .route("/api/task/:id", get(read_task))
         .route("/api/task/:id/check", post(check_task))
-        .route_layer(ValidateRequestHeaderLayer::bearer(&bearer_token))
+        .route_layer(ValidateRequestHeaderLayer::bearer(bearer_token))
 
     // .route(
     //     "/api/todos",

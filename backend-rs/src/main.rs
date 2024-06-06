@@ -20,6 +20,7 @@ use tower_http::cors::CorsLayer;
 #[tokio::main]
 async fn main() {
     let bearer_token = fs::read_to_string("bearer_token.txt").unwrap();
+    let bearer_token = bearer_token.trim();
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
