@@ -1,10 +1,10 @@
-use axum::{extract::Path, Extension, Json};
+use axum::{extract::{Path, Query}, Extension, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::{
-    error::{AppError, DtoValidationError}, task::TaskInDb, traits::{CrudModel, DtoValidator}
+    agent::AgentInDb, error::{AppError, DtoValidationError}, task::{AgentToken, TaskInDb}, traits::{CrudModel, DtoValidator}
 };
 
 #[allow(non_snake_case)]
@@ -32,11 +32,17 @@ impl DtoValidator for CheckTaskRequestDto {
 
 pub async fn check_task(
     Extension(pool): Extension<SqlitePool>,
-    Path(id): Path<Uuid>,
+    Path(agent_id): Path<Uuid>,
+    Path(task_id): Path<Uuid>,
+    token: Query<AgentToken>,
     Json(dto): Json<CheckTaskRequestDto>,
 ) -> Result<Json<CheckTaskResponseDto>, AppError> {
+    let agent = AgentInDb::read(&pool, agent_id).await?;
+    if agent.token != token.token {
+        return Err(AppError::Unauthorized);
+    }
     dto.validate()?;
-    let task = TaskInDb::read(&pool, id).await?;
+    let task = TaskInDb::read(&pool, task_id).await?;
     let correct = task.solution == dto.solution;
     Ok(Json(CheckTaskResponseDto { correct }))
 }

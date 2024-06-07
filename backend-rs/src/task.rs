@@ -2,12 +2,14 @@ use axum::{
     extract::{Path, Query},
     Extension, Json,
 };
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
     agent::AgentInDb,
+    completion::CompletionInDb,
     error::{AppError, DtoValidationError},
     traits::DtoValidator,
 };
@@ -122,11 +124,26 @@ pub async fn create_task(
 
 pub async fn read_task(
     Extension(pool): Extension<SqlitePool>,
-    Path(id): Path<Uuid>,
+    Path(agent_id): Path<Uuid>,
+    Path(task_id): Path<Uuid>,
+    token: Query<AgentToken>,
 ) -> Result<Json<TaskDto>, AppError> {
-    let model = TaskInDb::read(&pool, id).await?;
+    let agent = AgentInDb::read(&pool, agent_id).await?;
+    if agent.token != token.token {
+        return Err(AppError::Unauthorized);
+    }
 
+    let model = TaskInDb::read(&pool, task_id).await?;
     let task_type = serde_json::from_str(&model.task_json).unwrap();
+
+    if let Some(completion) = &mut CompletionInDb::read_by(&pool, task_id, agent_id).await? {
+        completion.start_time = Utc::now();
+        completion.completion_time = None;
+        completion.update(&pool).await?;
+    } else {
+        let completion = CompletionInDb::new(task_id, agent_id);
+        completion.create(&pool).await?;
+    }
 
     Ok(Json(TaskDto {
         name: model.name,
@@ -136,7 +153,7 @@ pub async fn read_task(
 
 #[derive(Deserialize)]
 pub struct AgentToken {
-    token: Uuid,
+    pub token: Uuid,
 }
 
 pub async fn read_all_tasks(

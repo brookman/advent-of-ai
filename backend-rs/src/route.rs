@@ -23,10 +23,14 @@ pub fn create_router(bearer_token: &str) -> Router {
 
         .route("/api/agent/:agentId/task", get(read_all_tasks))
 
+        .route("/api/agent/:agent_id/task/:task_id", get(read_task))
+        .route("/api/agent/:agent_id/task/:task_id/check", post(check_task))
+
         .route("/api/task", post(create_task))
         // .route("/api/task", get(read_all_tasks))
-        .route("/api/task/:id", get(read_task))
-        .route("/api/task/:id/check", post(check_task))
+        // .route("/api/task/:id", get(read_task))
+
+        // .route("/api/task/:id/check", post(check_task))
         .route_layer(ValidateRequestHeaderLayer::bearer(bearer_token))
 
     // .route(

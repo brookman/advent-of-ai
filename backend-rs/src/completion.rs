@@ -40,7 +40,7 @@ impl CompletionInDb {
         self.best_time_in_ms = Some(best_time_in_ms);
     }
 
-    async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(
             r#"INSERT INTO completion (id, task_id, agent_id, start_time, completion_time, best_time_in_ms) VALUES (?, ?, ?, ?, ?, ?);"#,
@@ -57,7 +57,7 @@ impl CompletionInDb {
         Ok(())
     }
 
-    async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
+    pub async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
         let mut conn = pool.acquire().await?;
         let model = sqlx::query_as!(
             Self,
@@ -69,7 +69,7 @@ impl CompletionInDb {
         Ok(model)
     }
 
-    async fn read_by(
+    pub async fn read_by(
         pool: &SqlitePool,
         task_id: Uuid,
         agent_id: Uuid,
@@ -86,7 +86,7 @@ impl CompletionInDb {
         Ok(model)
     }
 
-    async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+    pub async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
         let mut conn = pool.acquire().await?;
         let models = sqlx::query_as!(
             Self,
@@ -97,7 +97,7 @@ impl CompletionInDb {
         Ok(models)
     }
 
-    async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(
             r#"UPDATE completion SET task_id = ?, agent_id = ?, start_time = ?, completion_time = ?, best_time_in_ms = ? WHERE id = ?;"#,
@@ -114,7 +114,7 @@ impl CompletionInDb {
         Ok(())
     }
 
-    async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(r#"DELETE FROM completion WHERE id = ?;"#, self.id,)
             .execute(conn.as_mut())
