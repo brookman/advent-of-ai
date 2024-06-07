@@ -179,6 +179,16 @@ pub async fn read_all_tasks(
     Ok(Json(tasks))
 }
 
+pub async fn delete_task(
+    Extension(pool): Extension<SqlitePool>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Uuid>, AppError> {
+    let model = TaskInDb::read(&pool, id).await?;
+    model.delete(&pool).await?;
+
+    Ok(Json(model.id))
+}
+
 impl TaskInDb {
     pub fn new(name: String, task_json: String, solution: String) -> Self {
         Self {
@@ -244,7 +254,7 @@ impl TaskInDb {
 
     pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
-        sqlx::query!(r#"DELETE FROM task WHERE id = ?;"#, self.id,)
+        sqlx::query!(r#"DELETE FROM task WHERE id = ?;"#, self.id)
             .execute(conn.as_mut())
             .await?;
 

@@ -1,6 +1,9 @@
+use axum::{Extension, Json};
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
+
+use crate::error::AppError;
 
 #[derive(FromRow, Debug)]
 pub struct CompletionInDb {
@@ -10,6 +13,13 @@ pub struct CompletionInDb {
     pub start_time: DateTime<Utc>,
     pub completion_time: Option<DateTime<Utc>>,
     pub best_time_in_ms: Option<i64>,
+}
+
+pub async fn delete_all_completions(
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<Json<String>, AppError> {
+    CompletionInDb::delete_all(&pool).await?;
+    Ok(Json("All completions deleted".to_string()))
 }
 
 impl CompletionInDb {
@@ -117,6 +127,14 @@ impl CompletionInDb {
     pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(r#"DELETE FROM completion WHERE id = ?;"#, self.id,)
+            .execute(conn.as_mut())
+            .await?;
+
+        Ok(())
+    }
+    pub async fn delete_all(pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(r#"DELETE FROM completion;"#)
             .execute(conn.as_mut())
             .await?;
 
