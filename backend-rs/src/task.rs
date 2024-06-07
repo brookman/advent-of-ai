@@ -169,6 +169,7 @@ pub async fn read_all_tasks(
     let models = TaskInDb::read_all_with_completion(&pool, agent_id).await?;
     let mut dtos = vec![];
 
+    //TODO: Implement this with a join query
     for model in models {
         let mut dto = TasksDto {
             id: model.id,
@@ -179,7 +180,7 @@ pub async fn read_all_tasks(
 
         if let Some(completion_id) = model.completion_id {
             let completion = completion::CompletionInDb::read(&pool, completion_id).await?;
-            dto.time = Some(completion.completion_time.unwrap().timestamp());
+            dto.time = Some(completion.best_time_in_ms.unwrap());
         }
 
         dtos.push(dto);
