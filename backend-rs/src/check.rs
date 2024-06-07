@@ -32,8 +32,7 @@ impl DtoValidator for CheckTaskRequestDto {
 
 pub async fn check_task(
     Extension(pool): Extension<SqlitePool>,
-    Path(agent_id): Path<Uuid>,
-    Path(task_id): Path<Uuid>,
+    Path((agent_id, task_id)): Path<(Uuid,Uuid)>,
     token: Query<AgentToken>,
     Json(dto): Json<CheckTaskRequestDto>,
 ) -> Result<Json<CheckTaskResponseDto>, AppError> {

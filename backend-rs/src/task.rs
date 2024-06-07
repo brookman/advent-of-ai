@@ -61,6 +61,11 @@ pub enum TaskTypeDto {
     AdventOfCodePartTwo { description: String, input: String },
 }
 
+#[derive(Deserialize)]
+pub struct AgentToken {
+    pub token: Uuid,
+}
+
 impl DtoValidator for TaskCreateDto {
     fn validate(&self) -> Result<(), DtoValidationError> {
         if self.name.len() > 64 {
@@ -124,8 +129,7 @@ pub async fn create_task(
 
 pub async fn read_task(
     Extension(pool): Extension<SqlitePool>,
-    Path(agent_id): Path<Uuid>,
-    Path(task_id): Path<Uuid>,
+    Path((agent_id, task_id)): Path<(Uuid,Uuid)>,
     token: Query<AgentToken>,
 ) -> Result<Json<TaskDto>, AppError> {
     let agent = AgentInDb::read(&pool, agent_id).await?;
@@ -151,10 +155,7 @@ pub async fn read_task(
     }))
 }
 
-#[derive(Deserialize)]
-pub struct AgentToken {
-    pub token: Uuid,
-}
+
 
 pub async fn read_all_tasks(
     Extension(pool): Extension<SqlitePool>,
