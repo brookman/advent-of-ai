@@ -28,5 +28,7 @@ A single puzzle is usually self-contained, not super hard and the solution (whic
 DATABASE_URL=sqlite://sqlite.db
 BEARER_TOKEN=SwexCamp2024!
 ```
- - run `./run_migrations.sh`
- - run `cargo run -r`
+ - Install the sqlite CLI: `sudo apt install sqlite3`
+ - Create an empty DB: `sqlite3 sqlite.db "VACUUM;"`
+ - Run the migrations: `./run_migrations.sh`
+ - Build and run the backend: `cargo run -r`
