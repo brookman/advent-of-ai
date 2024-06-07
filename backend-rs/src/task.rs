@@ -63,6 +63,14 @@ pub struct TaskCreateDto {
     pub solution: String,
 }
 
+#[allow(non_snake_case)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TaskPatchDto {
+    pub name: Option<String>,
+    pub taskType: Option<TaskTypeDto>,
+    pub solution: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TaskTypeDto {
     SimpleTask { description: String },
@@ -200,13 +208,12 @@ pub async fn read_all_tasks(
 pub async fn read_all_tasks_admin(
     Extension(pool): Extension<SqlitePool>,
 ) -> Result<Json<Vec<TasksAdminDto>>, AppError> {
-
     let models = TaskInDb::read_all(&pool).await?;
     let mut dtos = vec![];
 
     //TODO: Implement this with a join query
     for model in models {
-        let  dto = TasksAdminDto {
+        let dto = TasksAdminDto {
             id: model.id,
             name: model.name,
             solution: model.solution,
@@ -224,6 +231,30 @@ pub async fn delete_task(
 ) -> Result<Json<Uuid>, AppError> {
     let model = TaskInDb::read(&pool, task_id).await?;
     model.delete(&pool).await?;
+
+    Ok(Json(model.id))
+}
+
+pub async fn patch_task(
+    Extension(pool): Extension<SqlitePool>,
+    Path(task_id): Path<Uuid>,
+    Json(dto): Json<TaskPatchDto>,
+) -> Result<Json<Uuid>, AppError> {
+    let mut model = TaskInDb::read(&pool, task_id).await?;
+
+    if let Some(name) = dto.name {
+        model.name = name;
+    }
+
+    if let Some(task_type) = dto.taskType {
+        model.task_json = serde_json::to_string(&task_type).unwrap();
+    }
+
+    if let Some(solution) = dto.solution {
+        model.solution = solution;
+    }
+
+    model.update(&pool).await?;
 
     Ok(Json(model.id))
 }
@@ -246,6 +277,21 @@ impl TaskInDb {
             self.name,
             self.task_json,
             self.solution,
+        )
+        .execute(conn.as_mut())
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+        let mut conn = pool.acquire().await?;
+        sqlx::query!(
+            r#"UPDATE task SET name = ?, task_json = ?, solution = ? WHERE id = ?;"#,
+            self.name,
+            self.task_json,
+            self.solution,
+            self.id,
         )
         .execute(conn.as_mut())
         .await?;
