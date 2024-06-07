@@ -7,18 +7,18 @@ meta {
 post {
   url: http://32k.eu:8000/api/task
   body: json
-  auth: none
+  auth: inherit
 }
 
 body:json {
   {
-    "name": "Warm-up task 1",
+    "name": "Warm-up task 2",
     "taskType": {
       "SimpleTask": {
-        "description": "What is 1 + 1?",
-        "solution": "2"
+        "description": "What is 100 - 2?"
       }
-    }
+    },
+    "solution": "98"
   }
   /*{
     "name": "Advent of code 2023, Day 1, Part Two",
