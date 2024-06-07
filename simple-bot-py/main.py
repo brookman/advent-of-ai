@@ -76,9 +76,18 @@ def solve_task(base_url, agent_id, task, agent_token, headers):
     task_json = requests.get(base_url + 'agent/' + agent_id + '/task/' + task_id + '?token=' + agent_token, headers=headers).json()
     
     task_type = task_json['taskType']
-    if task_type['SimpleTask'] is not None:
+
+    if 'SimpleTask' in task_type:
         description = task_type['SimpleTask']['description']
         return solve_simple_task(description)
+    elif 'AdventOfCodePartOne' in task_type:
+        description = task_type['AdventOfCodePartOne']['description']
+        input_text = task_type['AdventOfCodePartOne']['input']
+        return solve_advent_of_code_part1(description, input_text)
+    elif 'AdventOfCodePartTwo' in task_type:
+        description = task_type['AdventOfCodePartTwo']['description']
+        input_text = task_type['AdventOfCodePartTwo']['input']
+        return solve_advent_of_code_part2(description, input_text)
     else:
         raise NotImplementedError('Task type not implemented')
 
@@ -104,6 +113,75 @@ def solve_simple_task(description):
         return solution
     
     return 'no idea'
+
+def solve_advent_of_code_part1(description, input_text):
+    prompt = '''You are an expert "Advent of code" challenge solver. You are given a coding puzzle and you generate correct (compilable), efficient and idiomatic Rust code which solves the puzzle for a
+given input. Think out step-by-step first and put the code solution of your response in the following template format.
+
+```rust
+{}
+```
+
+The challenge is:
+{}'''
+    return solve_advent_of_code(description, input_text, prompt)
+
+def solve_advent_of_code_part2(description, input_text):
+    prompt = '''You are an expert "Advent of code" challenge solver. You are given a coding puzzle and you generate correct (compilable), efficient and idiomatic Rust code which solves the puzzle for a
+given input. You must only solve the task from "Part Two" of the challenge. Think out step-by-step first and put the code solution of your response in the following template format.
+
+```rust
+{}
+```
+
+The challenge is:
+{}'''
+    return solve_advent_of_code(description, input_text, prompt)
+    
+    
+def solve_advent_of_code(description, input_text, prompt):
+    ollama_url = 'http://192.168.3.2:1337/api/generate'
+    
+    template_file = '../solver-rs/src/main_template.rs'
+    main_file = '../solver-rs/src/main.rs'
+    input_file = '../solver-rs/input.txt'
+    
+    with open(template_file, 'r') as f:
+        template = f.read()
+     
+    prompt = prompt.format(template, description)
+    
+    request = {
+        'model': 'codestral',
+        'prompt': prompt,
+        'stream': False
+    }
+    
+    response = requests.post(ollama_url, json=request).json()['response']
+    print('Response:', response)  
+        
+    # find the rustcode inside the backticked rust code block (starting with ```rust and ending with ```)
+    start = response.find('```rust')
+    end = response.find('```', start + 1)
+    rust_code = response[start + 7:end]
+    print('Rust code:', rust_code)
+    
+    with open(main_file, 'w') as f:
+        f.write(rust_code)
+        
+    with open(input_file, 'w') as f:
+        f.write(input_text)
+    
+    # run cargo run in the solver-rs directory and get its output (last line only):
+    import subprocess
+    process = subprocess.run(['cargo', 'run'], cwd='../solver-rs', capture_output=True, text=True)
+    errors = process.stderr.strip()
+    print('Errors:', errors)
+    solution = process.stdout.strip()
+    
+    print('Rust output:', solution)
+    
+    return solution
 
 def check_solution(base_url, agent_id, task, solution, agent_token, headers):
     task_id = task['id']
