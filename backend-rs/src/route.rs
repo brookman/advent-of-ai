@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::{
-    agent::{create_agent, read_agent, read_all_agents}, check::check_task, completion::delete_all_completions, health_check::health_checker_handler, task::{create_task, delete_task, read_all_tasks, read_task}
+    agent::{create_agent, read_agent, read_all_agents}, check::check_task, completion::delete_all_completions, health_check::health_checker_handler, task::{create_task, delete_task, read_all_tasks, read_all_tasks_admin, read_task}
 };
 
 use tower_http::validate_request::ValidateRequestHeaderLayer;
@@ -21,6 +21,7 @@ pub fn create_router(bearer_token: &str) -> Router {
         .route("/api/agent/:agent_id/task/:task_id", get(read_task))
         .route("/api/agent/:agent_id/task/:task_id/check", post(check_task))
 
+        .route("/api/admin/task", get(read_all_tasks_admin))
         .route("/api/admin/task", post(create_task))
         .route("/api/admin/task/:task_id", delete(delete_task))
         .route("/api/admin/completion", delete(delete_all_completions))
