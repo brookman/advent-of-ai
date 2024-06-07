@@ -91,9 +91,9 @@ impl DtoValidator for TaskCreateDto {
                         "description too long (must be <=32768)".into(),
                     ));
                 }
-                if input.len() > 32768 {
+                if input.len() > 65536 {
                     return Err(DtoValidationError(
-                        "input too long (must be <=32768)".into(),
+                        "input too long (must be <=65536)".into(),
                     ));
                 }
             }
@@ -103,9 +103,9 @@ impl DtoValidator for TaskCreateDto {
                         "description too long (must be <=32768)".into(),
                     ));
                 }
-                if input.len() > 32768 {
+                if input.len() > 65536 {
                     return Err(DtoValidationError(
-                        "input too long (must be <=32768)".into(),
+                        "input too long (must be <=65536)".into(),
                     ));
                 }
             }
