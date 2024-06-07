@@ -1,5 +1,3 @@
-use core::task;
-
 use axum::{extract::Path, Extension, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
@@ -47,11 +45,59 @@ pub enum TaskTypeDto {
     AdventOfCodePartTwo { description: String, input: String },
 }
 
+impl DtoValidator for TaskCreateDto {
+    fn validate(&self) -> Result<(), DtoValidationError> {
+        if self.name.len() > 64 {
+            return Err(DtoValidationError("name too long (must be <=64)".into()));
+        }
+        if self.solution.len() > 4096 {
+            return Err(DtoValidationError(
+                "solution too long (must be <=4096)".into(),
+            ));
+        }
+
+        match &self.taskType {
+            TaskTypeDto::SimpleTask { description } => {
+                if description.len() > 4096 {
+                    return Err(DtoValidationError(
+                        "description too long (must be <=4096)".into(),
+                    ));
+                }
+            }
+            TaskTypeDto::AdventOfCodePartOne { description, input } => {
+                if description.len() > 4096 {
+                    return Err(DtoValidationError(
+                        "description too long (must be <=4096)".into(),
+                    ));
+                }
+                if input.len() > 32768 {
+                    return Err(DtoValidationError(
+                        "input too long (must be <=32768)".into(),
+                    ));
+                }
+            }
+            TaskTypeDto::AdventOfCodePartTwo { description, input } => {
+                if description.len() > 4096 {
+                    return Err(DtoValidationError(
+                        "description too long (must be <=4096)".into(),
+                    ));
+                }
+                if input.len() > 32768 {
+                    return Err(DtoValidationError(
+                        "input too long (must be <=32768)".into(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 pub async fn create_task(
     Extension(pool): Extension<SqlitePool>,
     Json(dto): Json<TaskCreateDto>,
 ) -> Result<Json<Uuid>, AppError> {
-    // dto.validate()?;
+    dto.validate()?;
 
     let task_json = serde_json::to_string(&dto.taskType).unwrap();
     let model = TaskInDb::new(dto.name, task_json, dto.solution);
