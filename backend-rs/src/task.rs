@@ -44,7 +44,7 @@ pub struct TasksDto {
     pub id: Uuid,
     pub name: String,
     pub completed: bool,
-    pub time: Option<i64>,
+    pub time_in_ms: Option<i64>,
 }
 
 #[allow(non_snake_case)]
@@ -175,12 +175,12 @@ pub async fn read_all_tasks(
             id: model.id,
             name: model.name,
             completed: model.completion_id.is_some(),
-            time: None,
+            time_in_ms: None,
         };
 
         if let Some(completion_id) = model.completion_id {
             let completion = completion::CompletionInDb::read(&pool, completion_id).await?;
-            dto.time = Some(completion.best_time_in_ms.unwrap());
+            dto.time_in_ms = Some(completion.best_time_in_ms.unwrap());
         }
 
         dtos.push(dto);
