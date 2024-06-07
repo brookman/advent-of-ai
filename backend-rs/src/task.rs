@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     agent::AgentInDb,
-    completion::CompletionInDb,
+    completion::{self, CompletionInDb},
     error::{AppError, DtoValidationError},
     traits::DtoValidator,
 };
@@ -44,6 +44,7 @@ pub struct TasksDto {
     pub id: Uuid,
     pub name: String,
     pub completed: bool,
+    pub time: Option<i64>,
 }
 
 #[allow(non_snake_case)]
@@ -169,10 +170,23 @@ pub async fn read_all_tasks(
 
     let tasks = models
         .into_iter()
-        .map(|model| TasksDto {
-            id: model.id,
-            name: model.name,
-            completed: model.completion_id.is_some(),
+        .map(|model| {
+            if let Some(completion_id) = model.completion_id {
+                // let completion = completion::CompletionInDb::read(&pool, completion_id).await.unwrap();
+                TasksDto {
+                    id: model.id,
+                    name: model.name,
+                    completed: true,
+                    time: Some(0i64),
+                }
+            } else {
+                TasksDto {
+                    id: model.id,
+                    name: model.name,
+                    completed: false,
+                    time: None,
+                }
+            }
         })
         .collect();
 
