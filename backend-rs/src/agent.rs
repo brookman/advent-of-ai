@@ -85,13 +85,13 @@ pub async fn read_all_agents(
 }
 
 impl AgentInDb {
-    fn new(name: String) -> Self {
+    pub fn new(name: String) -> Self {
         let id = Uuid::now_v7();
         let token = Uuid::now_v7();
         Self { id, token, name }
     }
 
-    async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(
             r#"INSERT INTO agent (id, token, name) VALUES (?, ?, ?);"#,
@@ -105,7 +105,7 @@ impl AgentInDb {
         Ok(())
     }
 
-    async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
+    pub async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
         let mut conn = pool.acquire().await?;
         let model = sqlx::query_as!(
             Self,
@@ -117,7 +117,7 @@ impl AgentInDb {
         Ok(model)
     }
 
-    async fn read_by_token(pool: &SqlitePool, id: Uuid, token: Uuid) -> anyhow::Result<Self> {
+    pub async fn read_by_token(pool: &SqlitePool, id: Uuid, token: Uuid) -> anyhow::Result<Self> {
         let mut conn = pool.acquire().await?;
         let model = sqlx::query_as!(
             Self,
@@ -130,7 +130,7 @@ impl AgentInDb {
         Ok(model)
     }
 
-    async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+    pub async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
         let mut conn = pool.acquire().await?;
         let models = sqlx::query_as!(
             Self,
@@ -141,7 +141,7 @@ impl AgentInDb {
         Ok(models)
     }
 
-    async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(
             r#"UPDATE agent SET token = ?, name = ? WHERE id = ?;"#,
@@ -155,7 +155,7 @@ impl AgentInDb {
         Ok(())
     }
 
-    async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(r#"DELETE FROM agent WHERE id = ?;"#, self.id,)
             .execute(conn.as_mut())

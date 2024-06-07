@@ -1,9 +1,13 @@
-use axum::{extract::Path, Extension, Json};
+use axum::{
+    extract::{Path, Query},
+    Extension, Json,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
 use crate::{
+    agent::AgentInDb,
     error::{AppError, DtoValidationError},
     traits::DtoValidator,
 };
@@ -14,6 +18,15 @@ pub struct TaskInDb {
     pub name: String,
     pub task_json: String,
     pub solution: String,
+}
+
+#[derive(FromRow, Debug)]
+pub struct TaskWithCompletionInDb {
+    pub id: Uuid,
+    pub name: String,
+    pub task_json: String,
+    pub solution: String,
+    pub completion_id: Option<Uuid>,
 }
 
 #[allow(non_snake_case)]
@@ -28,6 +41,7 @@ pub struct TaskDto {
 pub struct TasksDto {
     pub id: Uuid,
     pub name: String,
+    pub completed: bool,
 }
 
 #[allow(non_snake_case)]
@@ -120,16 +134,29 @@ pub async fn read_task(
     }))
 }
 
+#[derive(Deserialize)]
+pub struct AgentToken {
+    token: Uuid,
+}
+
 pub async fn read_all_tasks(
     Extension(pool): Extension<SqlitePool>,
+    Path(agent_id): Path<Uuid>,
+    token: Query<AgentToken>,
 ) -> Result<Json<Vec<TasksDto>>, AppError> {
-    let models = TaskInDb::read_all(&pool).await?;
+    let agent = AgentInDb::read(&pool, agent_id).await?;
+    if agent.token != token.token {
+        return Err(AppError::Unauthorized);
+    }
+
+    let models = TaskInDb::read_all_with_completion(&pool, agent_id).await?;
 
     let tasks = models
         .into_iter()
         .map(|model| TasksDto {
             id: model.id,
             name: model.name,
+            completed: model.completion_id.is_some(),
         })
         .collect();
 
@@ -178,6 +205,21 @@ impl TaskInDb {
         let models = sqlx::query_as!(
             Self,
             r#"SELECT id as "id: uuid::Uuid", name, task_json, solution FROM task;"#,
+        )
+        .fetch_all(conn.as_mut())
+        .await?;
+        Ok(models)
+    }
+
+    pub async fn read_all_with_completion(
+        pool: &SqlitePool,
+        agent_id: Uuid,
+    ) -> anyhow::Result<Vec<TaskWithCompletionInDb>> {
+        let mut conn = pool.acquire().await?;
+        let models = sqlx::query_as!(
+            TaskWithCompletionInDb,
+            r#"SELECT task.id as "id: uuid::Uuid", task.name, task.task_json, task.solution, completion.id as "completion_id: uuid::Uuid" FROM task LEFT JOIN completion ON task.id = completion.task_id AND completion.agent_id = ? AND completion.completion_time NOT NULL;"#,
+            agent_id,
         )
         .fetch_all(conn.as_mut())
         .await?;
