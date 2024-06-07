@@ -137,7 +137,7 @@ pub async fn read_all_tasks(
 }
 
 impl TaskInDb {
-    fn new(name: String, task_json: String, solution: String) -> Self {
+    pub fn new(name: String, task_json: String, solution: String) -> Self {
         Self {
             id: Uuid::now_v7(),
             name,
@@ -146,7 +146,7 @@ impl TaskInDb {
         }
     }
 
-    async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn create(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(
             r#"INSERT INTO task (id, name, task_json, solution) VALUES (?, ?, ?, ?);"#,
@@ -161,7 +161,7 @@ impl TaskInDb {
         Ok(())
     }
 
-    async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
+    pub async fn read(pool: &SqlitePool, id: Uuid) -> anyhow::Result<Self> {
         let mut conn = pool.acquire().await?;
         let model = sqlx::query_as!(
             Self,
@@ -173,7 +173,7 @@ impl TaskInDb {
         Ok(model)
     }
 
-    async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+    pub async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
         let mut conn = pool.acquire().await?;
         let models = sqlx::query_as!(
             Self,
@@ -184,7 +184,7 @@ impl TaskInDb {
         Ok(models)
     }
 
-    async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(r#"DELETE FROM task WHERE id = ?;"#, self.id,)
             .execute(conn.as_mut())
