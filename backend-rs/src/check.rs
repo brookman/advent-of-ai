@@ -2,7 +2,6 @@ use axum::{
     extract::{Path, Query},
     Extension, Json,
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -12,7 +11,7 @@ use crate::{
     completion::CompletionInDb,
     error::{AppError, DtoValidationError},
     task::{AgentToken, TaskInDb},
-    traits::{CrudModel, DtoValidator},
+    traits::DtoValidator,
 };
 
 #[allow(non_snake_case)]

@@ -1,14 +1,11 @@
 mod agent;
 mod check;
 mod completion;
-mod dtos;
 mod error;
-mod handler;
-mod model;
+mod health_check;
 mod route;
 mod task;
 mod traits;
-mod types;
 
 use std::env;
 

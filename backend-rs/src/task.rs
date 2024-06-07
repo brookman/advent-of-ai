@@ -129,7 +129,7 @@ pub async fn create_task(
 
 pub async fn read_task(
     Extension(pool): Extension<SqlitePool>,
-    Path((agent_id, task_id)): Path<(Uuid,Uuid)>,
+    Path((agent_id, task_id)): Path<(Uuid, Uuid)>,
     token: Query<AgentToken>,
 ) -> Result<Json<TaskDto>, AppError> {
     let agent = AgentInDb::read(&pool, agent_id).await?;
@@ -154,8 +154,6 @@ pub async fn read_task(
         taskType: task_type,
     }))
 }
-
-
 
 pub async fn read_all_tasks(
     Extension(pool): Extension<SqlitePool>,

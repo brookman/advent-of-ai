@@ -6,7 +6,7 @@ use axum::{
 use crate::{
     agent::{create_agent, read_agent, read_all_agents},
     check::check_task,
-    handler::health_checker_handler,
+    health_check::health_checker_handler,
     task::{create_task, read_all_tasks, read_task},
 };
 
@@ -20,32 +20,9 @@ pub fn create_router(bearer_token: &str) -> Router {
         .route("/api/agent", post(create_agent))
         .route("/api/agent", get(read_all_agents))
         .route("/api/agent/:id", get(read_agent))
-
         .route("/api/agent/:agentId/task", get(read_all_tasks))
-
         .route("/api/agent/:agent_id/task/:task_id", get(read_task))
         .route("/api/agent/:agent_id/task/:task_id/check", post(check_task))
-
         .route("/api/task", post(create_task))
-        // .route("/api/task", get(read_all_tasks))
-        // .route("/api/task/:id", get(read_task))
-
-        // .route("/api/task/:id/check", post(check_task))
         .route_layer(ValidateRequestHeaderLayer::bearer(bearer_token))
-
-    // .route(
-    //     "/api/todos",
-    //     post(create_todo_handler).get(todos_list_handler),
-    // )
-    // .route(
-    //     "/api/todos/:id",
-    //     get(get_todo_handler)
-    //         .patch(edit_todo_handler)
-    //         .delete(delete_todo_handler),
-    // )
-    // .route(
-    //     "/api/ranking",
-    //     get(get_ranking_handler)
-    // )
-    // .with_state(db)
 }
