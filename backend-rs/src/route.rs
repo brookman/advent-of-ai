@@ -22,7 +22,7 @@ pub fn create_router(bearer_token: &str) -> Router {
         .route("/api/agent/:agent_id/task/:task_id/check", post(check_task))
 
         .route("/api/admin/task", post(create_task))
-        .route("/api/admin/task/:id", delete(delete_task))
+        .route("/api/admin/task/:task_id", delete(delete_task))
         .route("/api/admin/completion", delete(delete_all_completions))
         
         .route_layer(ValidateRequestHeaderLayer::bearer(bearer_token))

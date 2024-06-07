@@ -71,24 +71,24 @@ impl DtoValidator for TaskCreateDto {
         if self.name.len() > 64 {
             return Err(DtoValidationError("name too long (must be <=64)".into()));
         }
-        if self.solution.len() > 4096 {
+        if self.solution.len() > 32768 {
             return Err(DtoValidationError(
-                "solution too long (must be <=4096)".into(),
+                "solution too long (must be <=32768)".into(),
             ));
         }
 
         match &self.taskType {
             TaskTypeDto::SimpleTask { description } => {
-                if description.len() > 4096 {
+                if description.len() > 32768 {
                     return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
+                        "description too long (must be <=32768)".into(),
                     ));
                 }
             }
             TaskTypeDto::AdventOfCodePartOne { description, input } => {
-                if description.len() > 4096 {
+                if description.len() > 32768 {
                     return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
+                        "description too long (must be <=32768)".into(),
                     ));
                 }
                 if input.len() > 32768 {
@@ -98,9 +98,9 @@ impl DtoValidator for TaskCreateDto {
                 }
             }
             TaskTypeDto::AdventOfCodePartTwo { description, input } => {
-                if description.len() > 4096 {
+                if description.len() > 32768 {
                     return Err(DtoValidationError(
-                        "description too long (must be <=4096)".into(),
+                        "description too long (must be <=32768)".into(),
                     ));
                 }
                 if input.len() > 32768 {
@@ -181,9 +181,9 @@ pub async fn read_all_tasks(
 
 pub async fn delete_task(
     Extension(pool): Extension<SqlitePool>,
-    Path(id): Path<Uuid>,
+    Path(task_id): Path<Uuid>,
 ) -> Result<Json<Uuid>, AppError> {
-    let model = TaskInDb::read(&pool, id).await?;
+    let model = TaskInDb::read(&pool, task_id).await?;
     model.delete(&pool).await?;
 
     Ok(Json(model.id))
