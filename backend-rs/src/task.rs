@@ -167,30 +167,25 @@ pub async fn read_all_tasks(
     }
 
     let models = TaskInDb::read_all_with_completion(&pool, agent_id).await?;
+    let mut dtos = vec![];
 
-    let tasks = models
-        .into_iter()
-        .map(|model| {
-            if let Some(completion_id) = model.completion_id {
-                // let completion = completion::CompletionInDb::read(&pool, completion_id).await.unwrap();
-                TasksDto {
-                    id: model.id,
-                    name: model.name,
-                    completed: true,
-                    time: Some(0i64),
-                }
-            } else {
-                TasksDto {
-                    id: model.id,
-                    name: model.name,
-                    completed: false,
-                    time: None,
-                }
-            }
-        })
-        .collect();
+    for model in models {
+        let mut dto = TasksDto {
+            id: model.id,
+            name: model.name,
+            completed: model.completion_id.is_some(),
+            time: None,
+        };
 
-    Ok(Json(tasks))
+        if let Some(completion_id) = model.completion_id {
+            let completion = completion::CompletionInDb::read(&pool, completion_id).await?;
+            dto.time = Some(completion.completion_time.unwrap().timestamp());
+        }
+
+        dtos.push(dto);
+    }
+
+    Ok(Json(dtos))
 }
 
 pub async fn delete_task(
