@@ -1,10 +1,11 @@
 use axum::{extract::{Path, Query}, Extension, Json};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::{
-    agent::AgentInDb, error::{AppError, DtoValidationError}, task::{AgentToken, TaskInDb}, traits::{CrudModel, DtoValidator}
+    agent::AgentInDb, completion::CompletionInDb, error::{AppError, DtoValidationError}, task::{AgentToken, TaskInDb}, traits::{CrudModel, DtoValidator}
 };
 
 #[allow(non_snake_case)]
@@ -43,5 +44,13 @@ pub async fn check_task(
     dto.validate()?;
     let task = TaskInDb::read(&pool, task_id).await?;
     let correct = task.solution == dto.solution;
+
+    if let Some(completion) = &mut CompletionInDb::read_by(&pool, task_id, agent_id).await? {
+        completion.complete();
+        completion.update(&pool).await?;
+    } else {
+       return Err(AppError::ValidationError(DtoValidationError("task not started".into())));
+    }
+    
     Ok(Json(CheckTaskResponseDto { correct }))
 }
