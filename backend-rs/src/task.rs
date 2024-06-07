@@ -53,8 +53,6 @@ pub struct TasksAdminDto {
     pub id: Uuid,
     pub name: String,
     pub solution: String,
-    pub completed: bool,
-    pub time_in_ms: Option<i64>,
 }
 
 #[allow(non_snake_case)]
@@ -201,31 +199,18 @@ pub async fn read_all_tasks(
 
 pub async fn read_all_tasks_admin(
     Extension(pool): Extension<SqlitePool>,
-    Path(agent_id): Path<Uuid>,
-    token: Query<AgentToken>,
 ) -> Result<Json<Vec<TasksAdminDto>>, AppError> {
-    let agent = AgentInDb::read(&pool, agent_id).await?;
-    if agent.token != token.token {
-        return Err(AppError::Unauthorized);
-    }
 
-    let models = TaskInDb::read_all_with_completion(&pool, agent_id).await?;
+    let models = TaskInDb::read_all(&pool).await?;
     let mut dtos = vec![];
 
     //TODO: Implement this with a join query
     for model in models {
-        let mut dto = TasksAdminDto {
+        let  dto = TasksAdminDto {
             id: model.id,
             name: model.name,
             solution: model.solution,
-            completed: model.completion_id.is_some(),
-            time_in_ms: None,
         };
-
-        if let Some(completion_id) = model.completion_id {
-            let completion = completion::CompletionInDb::read(&pool, completion_id).await?;
-            dto.time_in_ms = Some(completion.best_time_in_ms.unwrap());
-        }
 
         dtos.push(dto);
     }
