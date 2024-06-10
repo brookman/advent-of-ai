@@ -92,7 +92,7 @@ You will get a task with a description. Getting a task for the first time will s
       "description": "What is 100 - 2?"
     }
   }
-}``
+}```
 
 ### Submit a solution
 POST `api/agent/018ff1bb-644b-7506-87ce-8df4aff14ac2/task/018ff1bd-4803-74da-bf82-3448223365cb/check?token=018ff1bb-644b-72b2-a67e-d4f125227f1f`,
