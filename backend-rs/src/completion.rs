@@ -96,16 +96,16 @@ impl CompletionInDb {
         Ok(model)
     }
 
-    pub async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
-        let mut conn = pool.acquire().await?;
-        let models = sqlx::query_as!(
-            Self,
-            r#"SELECT id as "id: uuid::Uuid", task_id as "task_id: uuid::Uuid", agent_id as "agent_id: uuid::Uuid", start_time as "start_time: chrono::DateTime<Utc>", completion_time as "completion_time: chrono::DateTime<Utc>", best_time_in_ms FROM completion;"#,
-        )
-        .fetch_all(conn.as_mut())
-        .await?;
-        Ok(models)
-    }
+    // pub async fn read_all(pool: &SqlitePool) -> anyhow::Result<Vec<Self>> {
+    //     let mut conn = pool.acquire().await?;
+    //     let models = sqlx::query_as!(
+    //         Self,
+    //         r#"SELECT id as "id: uuid::Uuid", task_id as "task_id: uuid::Uuid", agent_id as "agent_id: uuid::Uuid", start_time as "start_time: chrono::DateTime<Utc>", completion_time as "completion_time: chrono::DateTime<Utc>", best_time_in_ms FROM completion;"#,
+    //     )
+    //     .fetch_all(conn.as_mut())
+    //     .await?;
+    //     Ok(models)
+    // }
 
     pub async fn update(&self, pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
@@ -124,14 +124,15 @@ impl CompletionInDb {
         Ok(())
     }
 
-    pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
-        let mut conn = pool.acquire().await?;
-        sqlx::query!(r#"DELETE FROM completion WHERE id = ?;"#, self.id,)
-            .execute(conn.as_mut())
-            .await?;
+    // pub async fn delete(&self, pool: &SqlitePool) -> anyhow::Result<()> {
+    //     let mut conn = pool.acquire().await?;
+    //     sqlx::query!(r#"DELETE FROM completion WHERE id = ?;"#, self.id,)
+    //         .execute(conn.as_mut())
+    //         .await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
+
     pub async fn delete_all(pool: &SqlitePool) -> anyhow::Result<()> {
         let mut conn = pool.acquire().await?;
         sqlx::query!(r#"DELETE FROM completion;"#)

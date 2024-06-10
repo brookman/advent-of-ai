@@ -156,11 +156,10 @@ pub async fn read_task(
     let model = TaskInDb::read(&pool, task_id).await?;
     let task_type = serde_json::from_str(&model.task_json).unwrap();
 
-    if let Some(completion) = &mut CompletionInDb::read_by(&pool, task_id, agent_id).await? {
-        // completion.start_time = Utc::now();
-        // completion.completion_time = None;
-        // completion.update(&pool).await?;
-    } else {
+    if CompletionInDb::read_by(&pool, task_id, agent_id)
+        .await?
+        .is_none()
+    {
         let completion = CompletionInDb::new(task_id, agent_id);
         completion.create(&pool).await?;
     }
