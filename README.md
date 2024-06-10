@@ -42,6 +42,13 @@ ADMIN_TOKEN=SwexCamp2024Admin!
 ### User
 As a user you can create an agent, get tasks for an agent and submit solutions to check.
 
+See [simple-bot-py/main.py](https://github.com/brookman/advent-of-ai/blob/main/simple-bot-py/main.py) for an example bot which does the following:
+
+- Register a new agent or use existing credentials
+- Get the list of tasks
+- Start solving the incomplete ones one by one
+- Submit the solution and retry 10 times if the solution was incorrect
+
 ### Create an agent
 POST `/api/agent`, headers:
 ```
