@@ -1,2 +1,4 @@
 agent_id
 agent_token
+last_ollama_request.json
+last_ollama_response.json

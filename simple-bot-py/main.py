@@ -1,16 +1,19 @@
+import json
 import requests
 
+base_url = 'http://32k.eu:8000/api/'
+user_token = 'SwexCamp2024!'
+
+ollama_url = 'http://192.168.3.2:1337/api/generate'
+model = 'codestral:22b-v0.1-q6_K'
+
+headers = {
+    'Authorization': 'Bearer ' + user_token
+}
 
 def main():
     print('Starting the bot...')
-    
-    base_url = 'http://32k.eu:8000/api/'
-    auth_token = 'SwexCamp2024!'
-    
-    headers = {
-        'Authorization': 'Bearer ' + auth_token
-    }
-    
+
     # get previously stored agent_id and agent_token from the file system
     agent_id = None
     agent_token = None
@@ -53,20 +56,20 @@ def main():
         completed = task['completed']
         
         if not completed:
-            for i in range(5):
-                solution = solve_task(base_url, agent_id, task, agent_token, headers)
-                correct = check_solution(base_url, agent_id, task, solution, agent_token, headers)
-                
-                print('Solution was correct?', correct)
-                
-                if correct:
-                    break
+            for i in range(8):
+                try:
+                    solution = solve_task(base_url, agent_id, task, agent_token, headers)
+                    correct = check_solution(base_url, agent_id, task, solution, agent_token, headers)
+                    
+                    print('Solution was correct?', correct)
+                    
+                    if correct:
+                        break
+                except Exception as e:
+                    print('Error:', e)
             
         else:
             print('Task already completed:', task_name)
-    
-    tasks_json = requests.get(base_url + 'agent/' + agent_id + '/task?token=' + agent_token, headers=headers).json()
-    print('Tasks ', tasks_json)
         
 def solve_task(base_url, agent_id, task, agent_token, headers):
     task_id = task['id']
@@ -91,20 +94,11 @@ def solve_task(base_url, agent_id, task, agent_token, headers):
     else:
         raise NotImplementedError('Task type not implemented')
 
-def solve_simple_task(description):
-    ollama_url = 'http://192.168.3.2:1337/api/generate'
-     
+def solve_simple_task(description):     
     prompt = '''You are a puzzle/task solver bot. You are given a task to solve. Think out step-by-step and put the final solution in backticks at the end of your response.
     For example, if the solution is 42, you should return `42`. The task is: {}'''.format(description)
-    
-    request = {
-        'model': 'codestral',
-        'prompt': prompt,
-        'stream': False
-    }
-    
-    response = requests.post(ollama_url, json=request).json()['response']
-    print('Response:', response)
+      
+    response = call_ollama(prompt)
     
     if response.count('`') >= 2:
         start = response.rfind('`')
@@ -116,7 +110,7 @@ def solve_simple_task(description):
 
 def solve_advent_of_code_part1(description, input_text):
     prompt = '''You are an expert "Advent of code" challenge solver. You are given a coding puzzle and you generate correct (compilable), efficient and idiomatic Rust code which solves the puzzle for a
-given input. Think out step-by-step first and put the code solution of your response in the following template format.
+given input. Think out step-by-step first, then output the Ruest code in the following template format:
 
 ```rust
 {}
@@ -128,7 +122,7 @@ The challenge is:
 
 def solve_advent_of_code_part2(description, input_text):
     prompt = '''You are an expert "Advent of code" challenge solver. You are given a coding puzzle and you generate correct (compilable), efficient and idiomatic Rust code which solves the puzzle for a
-given input. You must only solve the task from "Part Two" of the challenge. Think out step-by-step first and put the code solution of your response in the following template format.
+given input. You must only solve the task from "Part Two" of the challenge. Think out step-by-step first, then output the Rust code in the following template format:
 
 ```rust
 {}
@@ -140,8 +134,6 @@ The challenge is:
     
     
 def solve_advent_of_code(description, input_text, prompt):
-    ollama_url = 'http://192.168.3.2:1337/api/generate'
-    
     template_file = '../solver-rs/src/main_template.rs'
     main_file = '../solver-rs/src/main.rs'
     input_file = '../solver-rs/input.txt'
@@ -150,21 +142,16 @@ def solve_advent_of_code(description, input_text, prompt):
         template = f.read()
      
     prompt = prompt.format(template, description)
+    prompt = prompt.replace('\r\n', '\n')    
+    response = call_ollama(prompt)
     
-    request = {
-        'model': 'codestral',
-        'prompt': prompt,
-        'stream': False
-    }
-    
-    response = requests.post(ollama_url, json=request).json()['response']
-    print('Response:', response)  
+    if '```rust' not in response:
+        print('No rust code found in the response:', response)
+        return 'no idea'
         
-    # find the rustcode inside the backticked rust code block (starting with ```rust and ending with ```)
     start = response.find('```rust')
     end = response.find('```', start + 1)
     rust_code = response[start + 7:end]
-    print('Rust code:', rust_code)
     
     with open(main_file, 'w') as f:
         f.write(rust_code)
@@ -172,16 +159,37 @@ def solve_advent_of_code(description, input_text, prompt):
     with open(input_file, 'w') as f:
         f.write(input_text)
     
+    print('Trying to run the generated code...')
     # run cargo run in the solver-rs directory and get its output (last line only):
     import subprocess
     process = subprocess.run(['cargo', 'run'], cwd='../solver-rs', capture_output=True, text=True)
     errors = process.stderr.strip()
-    print('Errors:', errors)
+    print('errors:', errors)
     solution = process.stdout.strip()
     
     print('Rust output:', solution)
     
+    solution = ''.join(filter(str.isdigit, solution))
+    
     return solution
+
+def call_ollama(prompt):
+    request = {
+        'model': model,
+        'stream': False,
+        'prompt': prompt,
+    }
+    
+    with open('last_ollama_request.json', 'w') as f:
+        f.write(json.dumps(request, indent=4))
+    
+    print('Calling Ollama...')
+    whole_response = requests.post(ollama_url, json=request).json()
+    
+    with open('last_ollama_response.json', 'w') as f:
+        f.write(json.dumps(whole_response, indent=4))
+        
+    return whole_response['response']
 
 def check_solution(base_url, agent_id, task, solution, agent_token, headers):
     task_id = task['id']
@@ -194,8 +202,6 @@ def check_solution(base_url, agent_id, task, solution, agent_token, headers):
     result = requests.post(base_url + 'agent/' + agent_id + '/task/' + task_id + '/check?token=' + agent_token, json=check_task_request, headers=headers).json()
     
     return result['correct']
-
-
 
 if __name__ == "__main__":
     main()
