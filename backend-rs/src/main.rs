@@ -1,4 +1,5 @@
 mod agent;
+mod auth;
 mod check;
 mod completion;
 mod error;
@@ -21,7 +22,8 @@ use route::create_router;
 use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 use tower_http::cors::CorsLayer;
 
-const DEFAULT_BEAREER_TOKEN: &str = "SwexCamp2024!";
+const DEFAULT_USER_TOKEN: &str = "SwexCamp2024!";
+const DEFAULT_ADMIN_TOKEN: &str = "SwexCamp2024Admin!";
 const DEFAULT_DATABASE_URL: &str = "sqlite://sqlite.db";
 const ADDRESS: &str = "0.0.0.0:8000";
 
@@ -29,14 +31,15 @@ const ADDRESS: &str = "0.0.0.0:8000";
 async fn main() -> Result<()> {
     dotenv::dotenv().ok();
 
-    let bearer_token = env::var("BEARER_TOKEN").unwrap_or(DEFAULT_BEAREER_TOKEN.into());
+    let user_token = env::var("USER_TOKEN").unwrap_or(DEFAULT_USER_TOKEN.into());
+    let admin_token = env::var("ADMIN_TOKEN").unwrap_or(DEFAULT_ADMIN_TOKEN.into());
     let database_url = env::var("DATABASE_URL").unwrap_or(DEFAULT_DATABASE_URL.into());
+
+    let router = create_router(&user_token, &admin_token);
 
     let db = init_db(database_url.trim()).await?;
 
-    let app = create_router(&bearer_token)
-        .layer(create_cors_layer()?)
-        .layer(Extension(db));
+    let app = router.layer(create_cors_layer()?).layer(Extension(db));
 
     println!("🚀 Server started successfully");
 

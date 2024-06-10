@@ -2,7 +2,6 @@ use axum::{
     extract::{Path, Query},
     Extension, Json,
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
