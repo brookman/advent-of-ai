@@ -1,0 +1,11 @@
+meta {
+  name: Get tasks (admin)
+  type: http
+  seq: 8
+}
+
+get {
+  url: http://32k.eu:8000/api/admin/task
+  body: none
+  auth: inherit
+}

@@ -1,0 +1,17 @@
+meta {
+  name: Patch task (admin)
+  type: http
+  seq: 9
+}
+
+patch {
+  url: http://32k.eu:8000/api/admin/task/018ff2ca-90a6-7372-bb89-a7267f19bb80
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "solution" : "56324"
+  }
+}
